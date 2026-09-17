@@ -1,0 +1,30 @@
+name: Metis
+description: Automatically triage GitHub issues with TypeSafe AI's Jev model.
+branding:
+  icon: inbox
+  color: purple
+inputs:
+  typesafe-api-key:
+    description: TypeSafe API key, supplied from a repository secret.
+    required: true
+  github-token:
+    description: GitHub token with issues write permission.
+    default: ${{ github.token }}
+  model:
+    description: TypeSafe model name or alias.
+    default: jev-latest
+  config-path:
+    description: Optional configuration file path, relative to the checked-out repository.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Triage issue with Metis
+      shell: bash
+      env:
+        METIS_ACTION_PATH: ${{ github.action_path }}
+        METIS_CONFIG_PATH: ${{ inputs.config-path }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        TYPESAFE_API_KEY: ${{ inputs.typesafe-api-key }}
+        TYPESAFE_DEFAULT_MODEL: ${{ inputs.model }}
+      run: python3 "$METIS_ACTION_PATH/scripts/triage_issue.py"

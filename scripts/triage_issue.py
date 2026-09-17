@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Triage newly opened GitHub issues with Jev. Python standard library only."""
+"""Metis: triage newly opened GitHub issues with Jev. Standard library only."""
 
 import json
 import math
@@ -13,7 +13,7 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parent.parent
-COMMENT_MARKER = "<!-- jev-issue-triage:v1 -->"
+COMMENT_MARKER = "<!-- metis-issue-triage:v1 -->"
 CATEGORIES = {
     "bug": "Existing software behavior is broken or differs from its intended behavior.",
     "feature": "A request for new functionality or an enhancement to existing behavior.",
@@ -64,7 +64,7 @@ def request_json(url, token, method="GET", payload=None, retry=False):
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "jev-issue-triage",
+        "User-Agent": "metis-issue-triage",
     }
     for attempt in range(3):
         try:
@@ -105,7 +105,12 @@ def github_pages(path):
 
 
 def load_config():
-    config = json.loads((ROOT / ".github/jev-triage.json").read_text())
+    custom_path = os.environ.get("METIS_CONFIG_PATH", "").strip()
+    config_path = (
+        Path(os.environ.get("GITHUB_WORKSPACE", ".")) / custom_path
+        if custom_path else ROOT / ".github/metis.json"
+    )
+    config = json.loads(config_path.read_text())
     for key in (
         "minimum_choice_confidence", "minimum_choice_probability",
         "minimum_missing_probability",
@@ -249,7 +254,7 @@ def main():
         return
     for comment in github_pages(f"{issue_path}/comments"):
         if comment.get("user", {}).get("type") == "Bot" and COMMENT_MARKER in (comment.get("body") or ""):
-            print("Skipped reply: this issue already has a Jev triage comment.")
+            print("Skipped reply: this issue already has a Metis triage comment.")
             return
         if comment.get("user", {}).get("type") != "Bot":
             print("Skipped reply: a person has already joined the conversation.")
@@ -259,7 +264,7 @@ def main():
         "could you add the following details?\n\n"
         + "\n".join(f"- {text}" for text in missing)
         + "\n\nIf these details are already included or don't apply, feel free to say so."
-        + "\n\n_Automated issue triage powered by TypeSafe Jev._"
+        + "\n\n_Metis · Automated issue triage powered by TypeSafe Jev._"
     )
     github(f"{issue_path}/comments", "POST", {"body": body})
     print("Posted a missing-detail reply.")

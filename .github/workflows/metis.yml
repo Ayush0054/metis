@@ -1,0 +1,27 @@
+name: Metis issue triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: metis-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: github.event.issue.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: ./
+        with:
+          typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
+          model: ${{ vars.TYPESAFE_DEFAULT_MODEL || 'jev-latest' }}
