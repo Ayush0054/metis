@@ -156,3 +156,7 @@ Later releases need a new package version and matching tag. Merely pushing commi
 does not run the publishing workflow.
 
 The package has not been built, installed, or tested yet. No release has been triggered.
+
+## License
+
+[MIT](https://github.com/Ayush0054/metis/blob/main/LICENSE) © 2026 Ayush Jha.
