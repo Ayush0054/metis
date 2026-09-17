@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "metis-triage"
+version = "0.1.0"
+description = "GitHub issue triage powered by TypeSafe AI Jev"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Ayush Jha" }]
+keywords = ["github", "issues", "triage", "typesafe", "jev"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+
+[project.scripts]
+metis-triage = "metis_triage.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Ayush0054/metis"
+Repository = "https://github.com/Ayush0054/metis"
+Issues = "https://github.com/Ayush0054/metis/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/metis_triage"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/pyproject.toml", "/README.md"]

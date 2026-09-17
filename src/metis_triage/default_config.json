@@ -1,0 +1,12 @@
+{
+  "minimum_choice_confidence": 0.8,
+  "minimum_choice_probability": 0.85,
+  "minimum_missing_probability": 0.9,
+  "request_missing_details": true,
+  "labels": {
+    "bug": "bug",
+    "feature": "enhancement",
+    "documentation": "documentation",
+    "question": "question"
+  }
+}
