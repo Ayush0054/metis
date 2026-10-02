@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "workflows": [
+    {"name": "issue-triage", "uses": "issue-triage"},
+    {
+      "name": "pr-screening",
+      "uses": "pr-screening",
+      "config": {
+        "criteria": {
+          "relevant": "Does `pull_request` address a purpose or need of `repository`, based on the actual `files` changes?",
+          "useful_change": "Do `files` implement a concrete, useful change? Small fixes, typo corrections, documentation, and tests count. Do not require a large change or a linked issue.",
+          "no_promotion": "Is this contribution free of unrelated advertising, unsolicited promotional links, and spam? Relevant attribution, dependencies, and useful documentation links are acceptable."
+        }
+      }
+    }
+  ]
+}

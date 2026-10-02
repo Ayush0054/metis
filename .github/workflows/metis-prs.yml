@@ -1,29 +1,31 @@
-name: Metis issue triage
+name: Metis PR screening
 
 on:
-  issues:
-    types: [opened]
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, ready_for_review]
 
 permissions:
   contents: read
   issues: write
+  pull-requests: write
 
 concurrency:
-  group: metis-${{ github.repository }}-${{ github.event.issue.number }}
+  group: metis-pr-${{ github.repository }}-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
-  triage:
-    if: github.event.issue.user.type != 'Bot'
+  screen:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Only the trusted base commit supplies executable code and configuration.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
       - uses: ./
         with:
-          workflow: issue-triage
+          workflow: pr-screening
           config-path: .github/metis-workflows.json
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
           model: ${{ vars.TYPESAFE_DEFAULT_MODEL || 'jev-latest' }}

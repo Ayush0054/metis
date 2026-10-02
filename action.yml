@@ -1,5 +1,5 @@
 name: Metis
-description: Automatically triage GitHub issues with TypeSafe AI's Jev model.
+description: Run configurable GitHub workflows powered by TypeSafe AI's Jev model.
 branding:
   icon: inbox
   color: purple
@@ -8,23 +8,35 @@ inputs:
     description: TypeSafe API key, supplied from a repository secret.
     required: true
   github-token:
-    description: GitHub token with issues write permission.
+    description: GitHub token with permissions required by the selected workflows.
     default: ${{ github.token }}
   model:
     description: TypeSafe model name or alias.
     default: jev-latest
   config-path:
-    description: Optional configuration file path, relative to the checked-out repository.
+    description: Optional workflow manifest or legacy issue config, from the trusted checkout.
     default: ''
+  workflow:
+    description: Optional workflow name to run. Otherwise dispatch enabled workflows for this event.
+    default: ''
+  workflow-file:
+    description: Optional trusted Python workflow file from the base checkout, instead of built-ins.
+    default: ''
+  dry-run:
+    description: Evaluate with Jev and read GitHub without applying labels, comments, or closures.
+    default: 'false'
 runs:
   using: composite
   steps:
-    - name: Triage issue with Metis
+    - name: Run Metis workflows
       shell: bash
       env:
         METIS_ACTION_PATH: ${{ github.action_path }}
         METIS_CONFIG_PATH: ${{ inputs.config-path }}
+        METIS_WORKFLOW: ${{ inputs.workflow }}
+        METIS_WORKFLOW_FILE: ${{ inputs.workflow-file }}
+        METIS_DRY_RUN: ${{ inputs.dry-run }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         TYPESAFE_API_KEY: ${{ inputs.typesafe-api-key }}
         TYPESAFE_DEFAULT_MODEL: ${{ inputs.model }}
-      run: python3 "$METIS_ACTION_PATH/scripts/triage_issue.py"
+      run: python3 "$METIS_ACTION_PATH/scripts/run_workflow.py"

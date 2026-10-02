@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "workflows": [
+    {
+      "name": "pr-screening",
+      "uses": "pr-screening",
+      "config": {
+        "minimum_pass_probability": 0.8,
+        "maximum_fail_probability": 0.05,
+        "max_changed_files": 100,
+        "max_input_characters": 60000,
+        "allow_authors": [],
+        "repository_context": "",
+        "criteria": {
+          "relevant": "Does `pull_request` address a purpose or need of `repository`, based on the actual `files` changes?",
+          "useful_change": "Do `files` implement a concrete, useful change? Small fixes, typo corrections, documentation, and tests count. Do not require a large change or a linked issue.",
+          "no_promotion": "Is this contribution free of unrelated advertising, unsolicited promotional links, and spam? Relevant attribution, dependencies, and useful documentation links are acceptable."
+        },
+        "close_comment": "Thanks for contributing. Metis found that this PR does not meet the repository's contribution criteria. A maintainer can review this decision and reopen the PR."
+      }
+    }
+  ]
+}

@@ -2,14 +2,12 @@
 """Metis: triage newly opened GitHub issues with Jev. Standard library only."""
 
 import json
-import math
 import os
-import time
 from pathlib import Path
 from importlib.resources import files
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+
+from metis._http import probability, request_json, required_env
 
 
 COMMENT_MARKER = "<!-- metis-issue-triage:v1 -->"
@@ -37,50 +35,6 @@ MISSING_DETAILS = {
         "Only answer yes when missing version, runtime, or operating system details would matter.",
     ),
 }
-
-
-def required_env(name):
-    value = os.environ.get(name, "").strip()
-    if not value:
-        raise ValueError(f"Missing {name}. Configure it before running issue triage.")
-    return value
-
-
-def probability(value, name):
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
-        or not 0 <= value <= 1
-    ):
-        raise ValueError(f"Invalid probability for {name}.")
-    return value
-
-
-def request_json(url, token, method="GET", payload=None, retry=False):
-    data = None if payload is None else json.dumps(payload).encode("utf-8")
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "metis-issue-triage",
-    }
-    for attempt in range(3):
-        try:
-            request = Request(url, data=data, headers=headers, method=method)
-            with urlopen(request, timeout=30) as response:
-                return json.load(response)
-        except HTTPError as error:
-            # Never log response bodies, credentials, or user-controlled issue text.
-            if retry and error.code in {429, 500, 502, 503, 504, 529} and attempt < 2:
-                time.sleep(2 ** (attempt + 1))
-                continue
-            raise RuntimeError(f"API request failed with HTTP {error.code}.") from None
-        except (URLError, TimeoutError):
-            if retry and attempt < 2:
-                time.sleep(2 ** (attempt + 1))
-                continue
-            raise RuntimeError("API request failed or timed out.") from None
 
 
 def github(path, method="GET", payload=None):
@@ -178,9 +132,14 @@ def classify(issue, repository, available_labels, config, *, api_key=None, model
     return answers
 
 
-def main():
-    event = json.loads(Path(required_env("GITHUB_EVENT_PATH")).read_text())
-    if os.environ.get("GITHUB_EVENT_NAME") != "issues" or event.get("action") != "opened":
+def main(config=None, *, dry_run=False, event=None, repository=None):
+    from_environment = event is None
+    event = json.loads(Path(required_env("GITHUB_EVENT_PATH")).read_text()) if event is None else event
+    if (
+        (from_environment and os.environ.get("GITHUB_EVENT_NAME") != "issues")
+        or event.get("action") != "opened"
+        or "issue" not in event
+    ):
         print("Skipped: this workflow handles newly opened issues only.")
         return
     issue = event["issue"]
@@ -189,10 +148,10 @@ def main():
         return
 
     custom_path = os.environ.get("METIS_CONFIG_PATH", "").strip()
-    config = load_config(
+    config = validate_config(config) if config is not None else load_config(
         Path(os.environ.get("GITHUB_WORKSPACE", ".")) / custom_path if custom_path else None
     )
-    repository = required_env("GITHUB_REPOSITORY")
+    repository = required_env("GITHUB_REPOSITORY") if repository is None else repository
     if event["repository"]["full_name"] != repository:
         raise ValueError("Event repository does not match GITHUB_REPOSITORY.")
     owner, repo = repository.split("/")
@@ -243,8 +202,9 @@ def main():
         print("Skipped: an existing category label conflicts with the prediction.")
         return
     if target and target.casefold() not in existing:
-        github(f"{issue_path}/labels", "POST", {"labels": [target]})
-        print("Applied the configured category label.")
+        if not dry_run:
+            github(f"{issue_path}/labels", "POST", {"labels": [target]})
+        print("Would apply the configured category label." if dry_run else "Applied the configured category label.")
     elif not target:
         print("Configured category label does not exist; label creation was skipped.")
 
@@ -271,5 +231,6 @@ def main():
         + "\n\nIf these details are already included or don't apply, feel free to say so."
         + "\n\n_Metis · Automated issue triage powered by TypeSafe Jev._"
     )
-    github(f"{issue_path}/comments", "POST", {"body": body})
-    print("Posted a missing-detail reply.")
+    if not dry_run:
+        github(f"{issue_path}/comments", "POST", {"body": body})
+    print("Would post a missing-detail reply." if dry_run else "Posted a missing-detail reply.")
