@@ -11,7 +11,7 @@ named steps. Python 3.10+, no runtime dependencies.
 
 The framework imports as `metis_workflow`. Both issue triage and PR screening are
 examples built entirely with this framework. They do not import the legacy package.
-The current framework version is **0.1.1**.
+The current framework version is **0.1.0**.
 
 Guides: [Migration](docs/migration.md) · [Custom workflows](docs/custom-workflows.md).
 
@@ -255,7 +255,7 @@ framework and examples have no dependency on it. New work belongs in
 and publishes through PyPI Trusted Publishing. Configure the publisher for project
 `metis-workflow`, owner `Ayush0054`, repository `metis`, workflow `publish.yml`, and
 environment `pypi-workflow`. A release tag must match the root package version,
-currently `v0.1.1`. The legacy package has no automated publication in this workflow.
+currently `v0.1.0`. The legacy package has no automated publication in this workflow.
 
 ## Design references
 

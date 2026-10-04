@@ -1,6 +1,6 @@
 # Migrate to Metis Workflow
 
-`metis-workflow` 0.1.1 is the new framework. `metis-triage` 0.1.0 remains
+`metis-workflow` 0.1.0 is the new framework. `metis-triage` 0.1.0 remains
 independent under [`legacy/metis-triage/`](../legacy/metis-triage/).
 
 ## Move issue triage

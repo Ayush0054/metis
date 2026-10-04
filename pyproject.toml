@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "metis-workflow"
-version = "0.1.1"
+version = "0.1.0"
 description = "Composable workflow orchestration powered by TypeSafe AI Jev"
 readme = "README.md"
 license = "MIT"
