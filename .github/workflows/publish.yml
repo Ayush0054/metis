@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish metis-workflow to PyPI
 
 on:
   release:
@@ -51,8 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
-      name: pypi
-      url: https://pypi.org/project/metis-triage/
+      name: pypi-workflow
+      url: https://pypi.org/project/metis-workflow/
     permissions:
       id-token: write
     steps:
