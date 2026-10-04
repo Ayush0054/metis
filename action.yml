@@ -14,16 +14,16 @@ inputs:
     description: TypeSafe model name or alias.
     default: jev-latest
   config-path:
-    description: Optional workflow manifest or legacy issue config, from the trusted checkout.
+    description: Workflow manifest, legacy issue config, or plain JSON config with workflow-file.
     default: ''
   workflow:
     description: Optional workflow name to run. Otherwise dispatch enabled workflows for this event.
     default: ''
   workflow-file:
-    description: Optional trusted Python workflow file from the base checkout, instead of built-ins.
+    description: Trusted Python file exporting a Workflow class, from the base checkout.
     default: ''
   dry-run:
-    description: Evaluate with Jev and read GitHub without applying labels, comments, or closures.
+    description: Pass dry_run to the workflow. Write steps must honor it before external changes.
     default: 'false'
 runs:
   using: composite

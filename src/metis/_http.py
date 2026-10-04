@@ -1,7 +1,6 @@
-"""Shared standard-library transport and validation for workflow services."""
+"""Shared standard-library HTTP transport for workflow integrations."""
 
 import json
-import math
 import os
 import time
 from urllib.error import HTTPError, URLError
@@ -12,17 +11,6 @@ def required_env(name):
     value = os.environ.get(name, "").strip()
     if not value:
         raise ValueError(f"Missing {name}. Configure it before running Metis.")
-    return value
-
-
-def probability(value, name):
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, (int, float))
-        or not math.isfinite(value)
-        or not 0 <= value <= 1
-    ):
-        raise ValueError(f"Invalid probability for {name}.")
     return value
 
 

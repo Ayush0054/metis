@@ -4,7 +4,7 @@
     {"name": "issue-triage", "uses": "issue-triage"},
     {
       "name": "pr-screening",
-      "uses": "pr-screening",
+      "file": "../examples/pr_screening.py",
       "config": {
         "criteria": {
           "relevant": "Does `pull_request` address a purpose or need of `repository`, based on the actual `files` changes?",

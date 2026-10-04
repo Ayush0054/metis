@@ -3,7 +3,7 @@
 import os
 from urllib.parse import quote
 
-from ._http import request_json, required_env
+from .._http import request_json, required_env
 
 
 class GitHub:

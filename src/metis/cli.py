@@ -1,7 +1,6 @@
 """Discover, scaffold, and run Metis workflows."""
 
 import argparse
-import importlib.util
 import json
 import os
 import sys
@@ -9,23 +8,9 @@ from pathlib import Path
 
 from ._http import required_env
 
-from .builtins import run_workflows
+from .runner import run_workflows
 from .config import BUILTINS, load_manifest, template
-from .engine import Workflow
-
-
-def load_workflow(path):
-    path = path.resolve()
-    spec = importlib.util.spec_from_file_location("metis_custom_workflow", path)
-    if spec is None or spec.loader is None:
-        raise ValueError("Cannot load workflow file.")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    workflow = getattr(module, "workflow", None)
-    if not isinstance(workflow, Workflow):
-        raise ValueError("Custom file must export workflow = Workflow(...).")
-    return workflow
+from .loader import load_workflow
 
 
 def main(argv=None):
@@ -39,8 +24,8 @@ def main(argv=None):
     run.add_argument("workflow", nargs="?")
     run.add_argument("--config", type=Path)
     run.add_argument("--event", type=Path, help="JSON input; otherwise GITHUB_EVENT_PATH.")
-    run.add_argument("--workflow-file", type=Path, help="Trusted Python file exporting workflow.")
-    run.add_argument("--dry-run", action="store_true", help="Call Jev and read GitHub, but suppress built-in GitHub writes.")
+    run.add_argument("--workflow-file", type=Path, help="Trusted Python file exporting a workflow class.")
+    run.add_argument("--dry-run", action="store_true", help="Pass dry_run to steps; write steps must honor it.")
     github = commands.add_parser("github", help="Dispatch the GitHub Actions event.")
     github.add_argument("--config", type=Path)
     github.add_argument("--workflow")
@@ -50,7 +35,7 @@ def main(argv=None):
     try:
         if args.command == "workflows":
             print("issue-triage   Label issues and request missing bug-report details.\n"
-                  "pr-screening   Screen external PRs against editable contribution criteria.")
+                  "Custom workflows: use --workflow-file or a file entry in a manifest.")
             return 0
         if args.command == "init":
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -80,9 +65,15 @@ def main(argv=None):
                 raise ValueError("METIS_DRY_RUN must be true or false.")
             dry_run = dry_run or raw_dry_run == "true"
         if workflow_file:
-            if selected or path:
-                raise ValueError("Custom workflow files cannot be combined with a built-in selection or manifest.")
-            result = load_workflow(workflow_file).run(event=event, dry_run=dry_run)
+            if selected:
+                raise ValueError("Select a workflow name or a workflow file, not both.")
+            config = json.loads(path.read_text(encoding="utf-8")) if path else None
+            if config is not None and not isinstance(config, dict):
+                raise ValueError("Workflow configuration must be a JSON object.")
+            workflow = load_workflow(workflow_file, config=config)
+            event_name = os.environ.get("GITHUB_EVENT_NAME") if args.command == "github" else None
+            result = (workflow.run(event=event, dry_run=dry_run) if workflow.matches(event, event_name)
+                      else {"workflow": workflow.name, "status": "skipped", "reason": "Event does not match."})
         else:
             result = run_workflows(load_manifest(path), event, selected=selected, dry_run=dry_run,
                                    event_name=os.environ.get("GITHUB_EVENT_NAME") if args.command == "github" else None)

@@ -1,15 +1,10 @@
-"""Versioned workflow manifests with partial overrides of built-in defaults."""
+"""Versioned manifests for installed adapters and trusted workflow files."""
 
-import copy
 import json
 from importlib.resources import files
 from pathlib import Path
 
-from metis_triage._triage import load_config as issue_defaults, validate_config as validate_issue
-
-from .pr_screening import validate_config as validate_pr
-
-BUILTINS = ("issue-triage", "pr-screening")
+from .loader import BUILTINS
 
 
 def template(name):
@@ -37,23 +32,25 @@ def load_manifest(path=None):
         raise ValueError("A manifest needs at least one workflow.")
     names = set()
     resolved = []
+    base = Path(path).resolve().parent if path is not None else Path.cwd()
     for entry in entries:
-        if not isinstance(entry, dict) or set(entry) - {"name", "uses", "enabled", "config"}:
+        if not isinstance(entry, dict) or set(entry) - {"name", "uses", "file", "enabled", "config"}:
             raise ValueError("Invalid workflow entry.")
-        name, uses = entry.get("name"), entry.get("uses")
-        if not isinstance(name, str) or not name.strip() or name in names or uses not in BUILTINS:
-            raise ValueError("Workflow names must be unique and uses must name a built-in.")
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip() or name in names:
+            raise ValueError("Workflow names must be unique and nonempty.")
         names.add(name)
+        if ("uses" in entry) == ("file" in entry):
+            raise ValueError("Each workflow needs exactly one uses or file.")
+        if "uses" in entry and (not isinstance(entry["uses"], str) or entry["uses"] not in BUILTINS):
+            raise ValueError("Unknown installed workflow adapter.")
+        if "file" in entry and (not isinstance(entry["file"], str) or not entry["file"].strip()):
+            raise ValueError("Workflow file must be a nonempty path.")
         if type(entry.get("enabled", True)) is not bool:
             raise ValueError("Workflow enabled must be a boolean.")
         overrides = entry.get("config", {})
         if not isinstance(overrides, dict):
             raise ValueError("Workflow config must be an object.")
-        defaults = issue_defaults() if uses == "issue-triage" else template(uses)["workflows"][0]["config"]
-        if set(overrides) - set(defaults):
-            raise ValueError("Unknown workflow configuration field.")
-        config = copy.deepcopy(defaults)
-        config.update(overrides)
-        (validate_issue if uses == "issue-triage" else validate_pr)(config)
-        resolved.append({"name": name, "uses": uses, "enabled": entry.get("enabled", True), "config": config})
+        source = {"file": base / entry["file"]} if "file" in entry else {"uses": entry["uses"]}
+        resolved.append({"name": name, **source, "enabled": entry.get("enabled", True), "config": overrides})
     return resolved

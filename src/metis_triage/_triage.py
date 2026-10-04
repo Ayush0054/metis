@@ -7,7 +7,8 @@ from pathlib import Path
 from importlib.resources import files
 from urllib.parse import quote
 
-from metis._http import probability, request_json, required_env
+from metis._http import request_json, required_env
+from metis.validation import probability
 
 
 COMMENT_MARKER = "<!-- metis-issue-triage:v1 -->"

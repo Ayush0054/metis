@@ -1,30 +1,110 @@
 # Metis
 
-A small workflow orchestrator powered by TypeSafe AI's Jev model. Compose ordinary
-Python steps, pass state between them, and use Jev for focused semantic decisions.
-Run workflows from Python, the `metis` CLI, or the reusable GitHub Action.
+A small workflow orchestrator powered by TypeSafe AI's Jev model. Define a workflow
+class, connect API integrations, and run named steps with shared context.
 Python 3.10+, no runtime dependencies.
 
-Two built-in workflows are included:
+## Define a workflow class
 
-- **Issue triage** labels new issues and requests missing bug-report details.
-- **PR screening** checks external contributions against editable criteria and
-  closes clear failures. Passing and uncertain contributions stay open.
+```python
+from metis import Step, Workflow
+from metis.integrations import Jev
 
-## Start with a workflow
+class SupportRouting(Workflow):
+    name = "support-routing"
+
+    def build_steps(self):
+        return (
+            Step("assess", self.assess),
+            Step("route", self.route),
+        )
+
+    def assess(self, ctx):
+        jev = ctx.integrations.setdefault("jev", Jev())
+        return jev.check(ctx.event, {
+            "billing": "Does this ticket concern a payment or invoice?"
+        })
+
+    def route(self, ctx):
+        value = ctx.outputs["assess"]["billing"]
+        return {"queue": "billing" if value >= 0.8 else
+                "support" if value <= 0.2 else "manual-review"}
+
+# Export the class so the CLI can instantiate it.
+workflow = SupportRouting
+
+# In application code:
+# result = SupportRouting().run(event={"message": "I was charged twice"})
+```
+
+`Workflow` owns execution, skips, error handling, and the run report. Override
+`build_steps()` to define the order and change behavior by overriding individual
+methods. Each step returns a value that later steps read by name from `ctx.outputs`.
+For short workflows, `Workflow(name, steps)` remains available.
+
+The context exposes:
+
+| Field | Purpose |
+| --- | --- |
+| `event` | Input for this run |
+| `config` | Workflow defaults merged with supplied settings |
+| `integrations` | Shared API clients such as GitHub and Jev |
+| `state` | Internal data for this run, omitted from the run report |
+| `outputs` | Named step results included in the run report |
+| `dry_run` | Whether write steps should suppress external changes |
+
+Override `default_config()` and `validate_config(config)` to define and check your
+settings. Pass overrides to `SupportRouting(config={...})` or `.run(config={...})`.
+Each run gets fresh state, outputs, and a copy of its configuration. Integrations
+can be supplied to the constructor or `.run(integrations={"jev": Jev(...)})`.
+
+Use `Step("notify", self.notify, when=lambda ctx: ...)` for conditional execution,
+or `ctx.skip("reason")` to stop the current workflow normally. Errors stop later
+steps from running. Return only data that belongs in the run report. Write steps
+must check `ctx.dry_run` before changing an external system. Override
+`matches(event, event_name=None)` to decide which events the dispatcher accepts.
+Workflows run sequentially in one process; scheduling comes from your caller or
+GitHub Actions.
+
+## Integrations and examples
+
+The framework and use cases have separate locations:
+
+```text
+src/metis/
+  workflow.py             Workflow, Step, and Context
+  runner.py               Event dispatch
+  integrations/
+    github.py             GitHub API integration
+    jev.py                Jev judgments
+examples/
+  pr_screening.py         PRScreening(Workflow)
+  pr_screening.json       Editable PR criteria and policy
+  support_routing.py      SupportRouting(Workflow)
+```
+
+Import clients with `from metis.integrations import GitHub, Jev`. Jev returns
+probabilities; the workflow class owns policy and actions. PR screening is an
+example users can copy, modify, or subclass. It is not imported by the framework.
+The existing issue-triage behavior remains available through the packaged
+`IssueTriage` class in `metis_triage.workflow` and the original library API.
+
+## Run a workflow
 
 ```sh
 python -m pip install .
 metis workflows
-metis init pr-screening
+metis run --workflow-file examples/support_routing.py --event ticket.json
+metis run --workflow-file examples/pr_screening.py --event event.json --dry-run
 ```
 
-The last command creates `.github/metis-workflows.json` without overwriting an
-existing file. Edit its `criteria`, thresholds, author exemptions, and close
-comment. Configuration can override individual top-level settings; the `criteria`
-object replaces the complete checklist. Use `metis init issue-triage` for issue
-triage, or put both workflow entries into one manifest. Each entry has a unique
-`name`, a built-in `uses`, optional `enabled`, and optional `config`.
+A custom file exports `workflow = YourWorkflowClass`; existing Workflow instances
+are also accepted. Loading it executes trusted local Python. With `--workflow-file`,
+`--config path.json` supplies a plain JSON settings object. PR screening reads its
+defaults from the companion `pr_screening.json`; copy both files together.
+A PR dry run still reads GitHub and calls Jev, so it needs API credentials.
+
+For several workflows, use a manifest like `.github/metis-workflows.json`:
 
 ```json
 {
@@ -33,9 +113,9 @@ triage, or put both workflow entries into one manifest. Each entry has a unique
     {"name": "issue-triage", "uses": "issue-triage"},
     {
       "name": "pr-screening",
-      "uses": "pr-screening",
+      "file": "../examples/pr_screening.py",
       "config": {
-        "repository_context": "We accept bug fixes, useful examples, and documentation improvements.",
+        "repository_context": "We accept bug fixes, examples, and documentation improvements.",
         "maximum_fail_probability": 0.05,
         "allow_authors": ["trusted-contributor"]
       }
@@ -44,16 +124,21 @@ triage, or put both workflow entries into one manifest. Each entry has a unique
 }
 ```
 
+Every entry has a unique `name`, exactly one installed `uses` adapter or custom
+`file`, and optional `enabled` and `config`. File paths are relative to the
+manifest. Configuration overrides individual top-level settings; `criteria`
+replaces the whole checklist. Add another class through a `file` entry without
+changing Metis. `metis init issue-triage` scaffolds the packaged issue adapter.
+
 `metis github --config .github/metis-workflows.json` dispatches the GitHub Actions
-event to enabled workflows. `--workflow pr-screening` selects one configured name.
-Outside Actions, provide a saved GitHub event with
-`metis run pr-screening --event event.json --config .github/metis-workflows.json`.
-Add `--dry-run` to evaluate and print decisions while suppressing built-in GitHub
-writes. A dry run still reads GitHub and calls Jev, so it needs API credentials.
+event to matching classes. Select one configured name with `--workflow pr-screening`,
+or use `metis run pr-screening --event event.json --config .github/metis-workflows.json`
+outside Actions. The dispatcher calls each workflow's `matches()` method.
 
 ## PR screening setup
 
-For another repository, add this workflow on its default branch:
+Copy `examples/pr_screening.py` and its companion JSON into your repository,
+then add this workflow on the default branch:
 
 ```yaml
 name: Metis PR screening
@@ -75,19 +160,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
       - uses: Ayush0054/metis@main
         with:
-          workflow: pr-screening
+          workflow-file: examples/pr_screening.py
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
-Pin a published commit containing these changes for reproducible use. To load a
-custom manifest, add `actions/checkout` before Metis with
-`ref: ${{ github.event.pull_request.base.sha }}` and `persist-credentials: false`,
-then set `config-path: .github/metis-workflows.json`. The repository's own
-`.github/workflows/metis-prs.yml` demonstrates this setup. Execute only code from
-the trusted base; PR head code and configuration must never be checked out or run
-in this privileged workflow. See GitHub's
+Pin a published commit containing these changes for reproducible use. With
+`workflow-file`, an optional `config-path` points to plain JSON settings. For a
+manifest, use `config-path: .github/metis-workflows.json` and optionally
+`workflow: pr-screening` instead of `workflow-file`. The repository's own
+`.github/workflows/metis-prs.yml` demonstrates manifest dispatch.
+
+Custom classes can handle any event your GitHub workflow subscribes to. Execute
+only trusted code and configuration in `pull_request_target`; PR head code must
+never be checked out or run in this privileged workflow. See GitHub's
 [pull_request_target documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target).
 
 Screening runs as **load → evidence → judge → apply**:
@@ -122,54 +213,14 @@ Screening runs as **load → evidence → judge → apply**:
   A partial write can leave a comment without closing; inspect or rerun the job.
   Reopened PRs are screened again; add an author exemption to override screening.
 
-## Create your own workflow
+## Design references
 
-Custom use cases use the same `Workflow`, `Step`, and `Jev` API. Each step is a
-Python function; return a value to make it available to later steps by name.
-
-```python
-from metis import Jev, Step, Workflow
-
-def assess(ctx):
-    return Jev().check(ctx.event, {
-        "billing": "Does this ticket concern a payment or invoice?"
-    })
-
-def route(ctx):
-    value = ctx.outputs["assess"]["billing"]
-    return {"queue": "billing" if value >= 0.8 else
-            "support" if value <= 0.2 else "manual-review"}
-
-workflow = Workflow("support-routing", (
-    Step("assess", assess),
-    Step("route", route),
-))
-
-result = workflow.run(event={"message": "I was charged twice"})
-```
-
-Save the workflow as `support_routing.py` and run
-`metis run --workflow-file support_routing.py --event ticket.json`, or adapt
-[`examples/support_routing.py`](examples/support_routing.py). Loading a custom
-workflow executes trusted local Python. Add steps to call your own database,
-helpdesk, or API; no change to the Metis runner is required.
-
-To run a custom workflow in the GitHub Action, check out your trusted repository
-code first and set `workflow-file: .github/workflows/my_workflow.py` instead of
-`workflow` and `config-path`. The file exports `workflow = Workflow(...)` and
-receives the GitHub event as `ctx.event`. With `pull_request_target`, use only the
-trusted base checkout described above. Custom files can handle whichever events
-your GitHub workflow subscribes to.
-
-The context exposes `event`, `config`, `services`, `dry_run`, and `outputs`.
-Inject shared clients using `workflow.run(services={...})`. Add a condition with
-`Step("notify", notify, when=lambda ctx: ...)`, or call `ctx.skip("reason")` to stop
-the current workflow normally. Errors stop the workflow and prevent later steps
-from running. Results include workflow status, step status, and returned outputs;
-return only data that belongs in your logs. Custom write steps must check
-`ctx.dry_run`; Python plugins are responsible for their own external effects.
-Workflows run sequentially in one process; scheduling comes from your caller or
-GitHub Actions. This is not a persistent job queue.
+The class API takes inspiration from
+[Temporal's workflow classes](https://docs.temporal.io/develop/python/workflows/basics).
+Named function steps and prior outputs follow the useful composition pattern in
+[Agno workflows](https://docs.agno.com/workflows/overview). Keeping workflow
+configuration and execution status explicit is also informed by
+[Prefect flows](https://docs.prefect.io/v3/concepts/flows).
 
 ## Python package
 
@@ -303,7 +354,7 @@ Edits to the issue body do not automatically retrigger triage.
 
 ## Publishing to PyPI
 
-The package version is in `pyproject.toml`. The current version is `0.2.0`.
+The package version is in `pyproject.toml`. The current version is `0.1.1`.
 The `.github/workflows/publish.yml` workflow builds the wheel and source distribution,
 then publishes them using PyPI Trusted Publishing. No PyPI API token is needed.
 
@@ -319,7 +370,7 @@ Create a pending publisher in PyPI with these exact values:
 
 Use a GitHub environment named `pypi` in the repository settings. After configuring
 the publisher and completing your desired validation, publish a GitHub release with
-tag `v0.2.0` to trigger the upload, or manually run **Publish to PyPI** on `main`.
+tag `v0.1.1` to trigger the upload, or manually run **Publish to PyPI** on `main`.
 Later releases need a new package version and matching tag. Merely pushing commits
 does not run the publishing workflow.
 

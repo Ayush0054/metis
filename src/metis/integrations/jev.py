@@ -2,7 +2,8 @@
 
 import os
 
-from ._http import probability, request_json, required_env
+from .._http import request_json, required_env
+from ..validation import probability
 
 
 class Jev:
