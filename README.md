@@ -13,6 +13,8 @@ The framework imports as `metis_workflow`. Both issue triage and PR screening ar
 examples built entirely with this framework. They do not import the legacy package.
 The current framework version is **0.1.1**.
 
+Guides: [Migration](docs/migration.md) · [Custom workflows](docs/custom-workflows.md).
+
 ## Install
 
 From this checkout:

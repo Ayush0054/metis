@@ -32,4 +32,4 @@ Issues = "https://github.com/Ayush0054/metis/issues"
 packages = ["src/metis_workflow"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/examples", "/pyproject.toml", "/README.md", "/LICENSE"]
+include = ["/src", "/examples", "/docs", "/pyproject.toml", "/README.md", "/LICENSE"]
