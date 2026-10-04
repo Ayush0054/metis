@@ -1,7 +1,7 @@
 {
   "version": 1,
   "workflows": [
-    {"name": "issue-triage", "uses": "issue-triage"},
+    {"name": "issue-triage", "file": "../examples/issue_triage.py"},
     {
       "name": "pr-screening",
       "file": "../examples/pr_screening.py",

@@ -24,6 +24,6 @@ jobs:
       - uses: ./
         with:
           workflow: issue-triage
-          config-path: .github/metis-workflows.json
+          manifest-path: .github/metis-workflows.json
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
           model: ${{ vars.TYPESAFE_DEFAULT_MODEL || 'jev-latest' }}

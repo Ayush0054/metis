@@ -1,7 +1,7 @@
 """Subclass Workflow to route a support ticket with Jev judgments."""
 
-from metis import Step, Workflow
-from metis.integrations import Jev
+from metis_workflow import Step, Workflow
+from metis_workflow.integrations import Jev
 
 
 class SupportRouting(Workflow):

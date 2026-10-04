@@ -1,4 +1,0 @@
-{
-  "version": 1,
-  "workflows": [{"name": "issue-triage", "uses": "issue-triage", "config": {}}]
-}

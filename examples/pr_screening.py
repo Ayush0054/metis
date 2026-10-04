@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from urllib.parse import quote
 
-from metis import Step, Workflow
-from metis.integrations import APIError, GitHub, Jev
-from metis.validation import probability
+from metis_workflow import Step, Workflow
+from metis_workflow.integrations import APIError, GitHub, Jev
+from metis_workflow.validation import probability
 
 
 def validate_config(config):

@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 def required_env(name):
     value = os.environ.get(name, "").strip()
     if not value:
-        raise ValueError(f"Missing {name}. Configure it before running Metis.")
+        raise ValueError(f"Missing {name}. Configure it before running Metis Workflow.")
     return value
 
 
@@ -26,7 +26,7 @@ def request_json(url, token, method="GET", payload=None, retry=False):
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "metis",
+        "User-Agent": "metis-workflow",
     }
     for attempt in range(3):
         try:

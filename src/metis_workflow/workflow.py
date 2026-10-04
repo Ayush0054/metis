@@ -1,5 +1,6 @@
 """Small, synchronous workflows: ordinary Python steps with explicit state."""
 
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -31,25 +32,25 @@ class Step:
     when: Callable[[Context], bool] | None = None
 
 
-class Workflow:
+class Workflow(ABC):
     """Subclass and define build_steps(); the runner owns execution and reporting."""
 
     name = ""
 
-    def __init__(self, name=None, steps=None, *, config=None, integrations=None):
+    def __init__(self, *, name=None, config=None, integrations=None):
         self.name = name or self.name or type(self).__name__
         self.config = deepcopy(self.default_config())
         if config is not None:
             self.config.update(deepcopy(config))
         self.integrations = dict(integrations or {})
-        self.steps = tuple(self.build_steps() if steps is None else steps)
+        self.steps = tuple(self.build_steps())
         names = [step.name for step in self.steps]
         if not self.name or not names or any(not name for name in names) or len(set(names)) != len(names):
             raise ValueError("Workflows need a name and uniquely named steps.")
 
+    @abstractmethod
     def build_steps(self):
         """Return ordered Step objects, usually wrapping this class's methods."""
-        raise NotImplementedError("Define build_steps() or pass steps to Workflow.")
 
     def default_config(self):
         return {}

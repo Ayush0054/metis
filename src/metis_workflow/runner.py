@@ -1,6 +1,6 @@
 """Dispatch configured workflows without knowing their domain logic."""
 
-from .loader import load_builtin, load_workflow
+from .loader import load_workflow
 
 
 def run_workflows(entries, event, *, event_name=None, selected=None, dry_run=False):
@@ -11,8 +11,7 @@ def run_workflows(entries, event, *, event_name=None, selected=None, dry_run=Fal
         if not entry["enabled"] or (selected is not None and selected != entry["name"]):
             continue
         options = {"name": entry["name"], "config": entry["config"]}
-        workflow = (load_workflow(entry["file"], **options) if "file" in entry
-                    else load_builtin(entry["uses"], **options))
+        workflow = load_workflow(entry["file"], **options)
         if workflow.matches(event, event_name):
             results.append(workflow.run(event=event, dry_run=dry_run))
     return results

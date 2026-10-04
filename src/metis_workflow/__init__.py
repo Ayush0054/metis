@@ -1,4 +1,4 @@
-"""Metis: compose workflows from Python steps and Jev judgments."""
+"""Metis Workflow: compose workflow classes from Python steps and integrations."""
 
 from .workflow import Context, Step, Workflow
 

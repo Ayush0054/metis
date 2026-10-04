@@ -1,4 +1,4 @@
-name: Metis
+name: Metis Workflow
 description: Run configurable GitHub workflows powered by TypeSafe AI's Jev model.
 branding:
   icon: inbox
@@ -14,10 +14,13 @@ inputs:
     description: TypeSafe model name or alias.
     default: jev-latest
   config-path:
-    description: Workflow manifest, legacy issue config, or plain JSON config with workflow-file.
+    description: Optional plain JSON settings for workflow-file.
+    default: ''
+  manifest-path:
+    description: JSON manifest containing workflow class file paths.
     default: ''
   workflow:
-    description: Optional workflow name to run. Otherwise dispatch enabled workflows for this event.
+    description: Optional name to select from manifest-path.
     default: ''
   workflow-file:
     description: Trusted Python file exporting a Workflow class, from the base checkout.
@@ -33,6 +36,7 @@ runs:
       env:
         METIS_ACTION_PATH: ${{ github.action_path }}
         METIS_CONFIG_PATH: ${{ inputs.config-path }}
+        METIS_MANIFEST_PATH: ${{ inputs.manifest-path }}
         METIS_WORKFLOW: ${{ inputs.workflow }}
         METIS_WORKFLOW_FILE: ${{ inputs.workflow-file }}
         METIS_DRY_RUN: ${{ inputs.dry-run }}
